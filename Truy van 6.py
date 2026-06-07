@@ -57,6 +57,71 @@ translation = spark.read.csv(
     header=True,
     inferSchema=True
 )
+#Kiểm tra giá trị bị thiếu
+from pyspark.sql.functions import *
+datasets = {
+    "customers": customers,
+    "geolocation": geolocation,
+    "order_items": order_items,
+    "payments": payments,
+    "reviews": reviews,
+    "orders": orders,
+    "products": products,
+    "sellers": sellers,
+    "translation": translation
+}
+for name, df in datasets.items():
+    print(f"\n Kết quả kiểm tra giá trị bị thiếu của bảng: {name.upper()}")
+    df.select([
+        count(
+            when(col(c).isNull(), c)
+        ).alias(c)
+        for c in df.columns
+    ]).show()
+
+#Kiểm tra dữ liệu trùng lặp
+datasets = {
+    "customers": customers,
+    "geolocation": geolocation,
+    "order_items": order_items,
+    "payments": payments,
+    "reviews": reviews,
+    "orders": orders,
+    "products": products,
+    "sellers": sellers,
+    "translation": translation
+}
+# Loại bỏ dữ liệu trùng lặp
+for name, df in datasets.items():
+
+    before = df.count()
+
+    after = df.dropDuplicates().count()
+
+    print(
+        f"{name}: Before = {before}, After = {after}"
+    )
+
+#Chuẩn hóa dữ liệu thời gian
+from pyspark.sql.functions import to_timestamp
+
+orders = orders \
+.withColumn(
+    "order_purchase_timestamp",
+    to_timestamp("order_purchase_timestamp")
+) \
+.withColumn(
+    "order_approved_at",
+    to_timestamp("order_approved_at")
+) \
+.withColumn(
+    "order_delivered_customer_date",
+    to_timestamp("order_delivered_customer_date")
+) \
+.withColumn(
+    "order_estimated_delivery_date",
+    to_timestamp("order_estimated_delivery_date")
+)
 customers.createOrReplaceTempView("customers")
 geolocation.createOrReplaceTempView("geolocation")
 order_items.createOrReplaceTempView("order_items")
@@ -96,19 +161,31 @@ FROM quarterly_revenue
 ket_qua = spark.sql(Truy_van_6)
 ket_qua.show(100, False)
 
-#Trực quan hóa dữ liệu truy vấn 6
+# Trực quan hóa dữ liệu
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 df6 = ket_qua.toPandas()
-
-plt.figure(figsize=(12,6))
-
+df6["period"] = (
+    df6["year"].astype(str)
+    + "-Q"
+    + df6["quarter"].astype(str)
+)
+plt.figure(figsize=(14,6))
 plt.plot(
-range(len(df6)),
-df6["revenue"],
-marker="o"
+    df6["period"],
+    df6["revenue"],
+    marker="o",
+    linewidth=2
 )
 plt.title(
-"Doanh thu theo quý"
+    "Doanh thu theo quý giai đoạn 2016 - 2018"
 )
+plt.xlabel("Quý")
+plt.ylabel("Doanh thu (Triệu BRL)")
+plt.gca().yaxis.set_major_formatter(
+    FuncFormatter(lambda x, p: f'{x/1000000:.1f}M')
+)
+plt.xticks(rotation=45)
+plt.grid(True)
 plt.tight_layout()
 plt.show()
