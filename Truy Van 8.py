@@ -129,31 +129,41 @@ WITH delivery_review AS
     SELECT
         r.review_score,
         DATEDIFF(
-            order_delivered_customer_date,
-            order_purchase_timestamp
+            o.order_delivered_customer_date,
+            o.order_purchase_timestamp
         ) AS delivery_days
     FROM orders o
     JOIN reviews r
         ON o.order_id = r.order_id
+    WHERE o.order_status = 'delivered'
+    AND o.order_delivered_customer_date IS NOT NULL
+    AND o.order_purchase_timestamp IS NOT NULL
 )
+
 SELECT
     CASE
-        WHEN delivery_days <= 5
-            THEN 'Fast'
-        WHEN delivery_days <= 10
-            THEN 'Normal'
-        ELSE 'Slow'
+        WHEN delivery_days <= 5 THEN 'Fast'
+        WHEN delivery_days <= 10 THEN 'Normal'
+        WHEN delivery_days > 10 THEN 'Slow'
     END AS delivery_group,
-    AVG(review_score) AS avg_review,
+
+    ROUND(AVG(review_score), 2) AS avg_review,
     COUNT(*) AS total_orders
+
 FROM delivery_review
+
 GROUP BY
     CASE
-        WHEN delivery_days <= 5
-            THEN 'Fast'
-        WHEN delivery_days <= 10
-            THEN 'Normal'
-        ELSE 'Slow'
+        WHEN delivery_days <= 5 THEN 'Fast'
+        WHEN delivery_days <= 10 THEN 'Normal'
+        WHEN delivery_days > 10 THEN 'Slow'
+    END
+
+ORDER BY
+    CASE delivery_group
+        WHEN 'Fast' THEN 1
+        WHEN 'Normal' THEN 2
+        WHEN 'Slow' THEN 3
     END
 """
 ket_qua = spark.sql(Truy_van_8)
