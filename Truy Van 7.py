@@ -133,7 +133,8 @@ products.createOrReplaceTempView("products")
 sellers.createOrReplaceTempView("sellers")
 translation.createOrReplaceTempView("translation")
 
- Truy_van_7 = """
+#Truy van 7
+Truy_van_7 = """
 SELECT
     c.customer_state,
     COUNT(*) AS total_delivered_orders,
