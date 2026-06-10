@@ -137,28 +137,50 @@ Truy_van_6 = """
 WITH quarterly_revenue AS
 (
     SELECT
-        YEAR(order_purchase_timestamp) AS year,
-        QUARTER(order_purchase_timestamp) AS quarter,
-        SUM(payment_value) AS revenue
+        YEAR(o.order_purchase_timestamp) AS year,
+        QUARTER(o.order_purchase_timestamp) AS quarter,
+        ROUND(SUM(p.payment_value), 2) AS revenue
     FROM orders o
     JOIN payments p
         ON o.order_id = p.order_id
+    WHERE o.order_status = 'delivered'
     GROUP BY
-        YEAR(order_purchase_timestamp),
-        QUARTER(order_purchase_timestamp)
+        YEAR(o.order_purchase_timestamp),
+        QUARTER(o.order_purchase_timestamp)
+),
+
+growth_table AS
+(
+    SELECT
+        year,
+        quarter,
+        revenue,
+        LAG(revenue) OVER (
+            ORDER BY year, quarter
+        ) AS previous_revenue
+    FROM quarterly_revenue
 )
+
 SELECT
     year,
     quarter,
     revenue,
-    revenue -
-    LAG(revenue)
-    OVER(
-        ORDER BY year, quarter
-    ) AS growth
-FROM quarterly_revenue
+    previous_revenue,
+    ROUND(
+        revenue - previous_revenue,
+        2
+    ) AS growth,
+    ROUND(
+        (revenue - previous_revenue) * 100
+        / previous_revenue,
+        2
+    ) AS growth_rate_percent
+FROM growth_table
+ORDER BY year, quarter
 """
+
 ket_qua = spark.sql(Truy_van_6)
+
 ket_qua.show(100, False)
 
 # Trực quan hóa dữ liệu
