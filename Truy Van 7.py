@@ -133,39 +133,47 @@ products.createOrReplaceTempView("products")
 sellers.createOrReplaceTempView("sellers")
 translation.createOrReplaceTempView("translation")
 
- #Truy vấn 7
-Truy_van_7 = """
+ Truy_van_7 = """
 SELECT
     c.customer_state,
-    COUNT(*) AS total_orders,
+    COUNT(*) AS total_delivered_orders,
+
     SUM(
         CASE
-            WHEN order_delivered_customer_date >
-                 order_estimated_delivery_date
+            WHEN o.order_delivered_customer_date >
+                 o.order_estimated_delivery_date
             THEN 1
             ELSE 0
         END
     ) AS late_orders,
+
     ROUND(
-        100.0 *
-        SUM(
+        100.0 * SUM(
             CASE
-                WHEN order_delivered_customer_date >
-                     order_estimated_delivery_date
+                WHEN o.order_delivered_customer_date >
+                     o.order_estimated_delivery_date
                 THEN 1
                 ELSE 0
             END
-        ) /
-        COUNT(*),
+        ) / COUNT(*),
         2
     ) AS late_rate
+
 FROM orders o
 JOIN customers c
     ON o.customer_id = c.customer_id
+
+WHERE o.order_status = 'delivered'
+AND o.order_delivered_customer_date IS NOT NULL
+AND o.order_estimated_delivery_date IS NOT NULL
+
 GROUP BY c.customer_state
+
 ORDER BY late_rate DESC
 """
+
 ket_qua = spark.sql(Truy_van_7)
+
 ket_qua.show(100, False)
 
 #Trực quan hóa dữ liệu truy vấn 7
