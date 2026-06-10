@@ -134,17 +134,30 @@ translation.createOrReplaceTempView("translation")
 
  #Truy vấn 9
 Truy_van_9 = """
-WITH seller_performance AS
+WITH seller_order AS
 (
     SELECT
         oi.seller_id,
-        SUM(oi.price) AS revenue,
-        AVG(r.review_score) AS avg_review
+        oi.order_id,
+        SUM(oi.price) AS order_revenue
     FROM order_items oi
+    GROUP BY oi.seller_id, oi.order_id
+),
+
+seller_performance AS
+(
+    SELECT
+        so.seller_id,
+        COUNT(DISTINCT so.order_id) AS order_count,
+        ROUND(SUM(so.order_revenue), 2) AS revenue,
+        COUNT(DISTINCT r.review_id) AS review_count,
+        ROUND(AVG(r.review_score), 2) AS avg_review
+    FROM seller_order so
     JOIN reviews r
-        ON oi.order_id = r.order_id
-    GROUP BY oi.seller_id
+        ON so.order_id = r.order_id
+    GROUP BY so.seller_id
 )
+
 SELECT *
 FROM seller_performance
 WHERE revenue >
@@ -153,10 +166,13 @@ WHERE revenue >
     FROM seller_performance
 )
 AND avg_review < 4
+AND review_count >= 10
+ORDER BY revenue DESC
 """
-ket_qua = spark.sql(Truy_van_9)
-ket_qua.show(100, False)
 
+ket_qua = spark.sql(Truy_van_9)
+
+ket_qua.show(100, False)
 #Trực quan hóa dữ liệu truy vấn 9
 import matplotlib.pyplot as plt
 df9 = ket_qua.toPandas()
@@ -172,3 +188,5 @@ plt.xlabel("Doanh thu")
 plt.ylabel("Điểm đánh giá")
 plt.tight_layout()
 plt.show()
+
+
